@@ -1,0 +1,81 @@
+{
+    "port": 8420,
+    "auth_token": "CHANGE_ME_generate_with_python3_-c_import_secrets_print_secrets_token_urlsafe_32",
+
+    "location": {
+        "latitude": 43.07,
+        "longitude": -89.40,
+        "_comment": "Madison, WI — adjust to your location"
+    },
+
+    "nicknames": {
+        "_comment": "Custom display names — set from the iPhone app or edit here",
+        "192.0.2.10": "Porch Lights",
+        "192.0.2.12": "Living Room Lamp"
+    },
+
+    "groups": {
+        "_comment": "Each group is a named list of device IPs or hostnames",
+        "porch": [
+            "string_lights"
+        ],
+        "living-room": [
+            "192.0.2.10",
+            "192.0.2.12"
+        ]
+    },
+
+    "mqtt": {
+        "_comment": "Optional — remove this section to disable MQTT. Requires: pip install paho-mqtt",
+        "broker": "localhost",
+        "port": 1883,
+        "topic_prefix": "glowup",
+        "username": null,
+        "password": null,
+        "tls": false,
+        "publish_colors": false,
+        "color_interval": 1.0
+    },
+
+    "distributed": {
+        "_comment": "Optional — remove this section to disable distributed compute. Requires MQTT.",
+        "udp_port_base": 9420,
+        "udp_port_range": 100
+    },
+
+    "schedule": [
+        {
+            "name": "porch evening aurora",
+            "group": "porch",
+            "start": "sunset-30m",
+            "stop": "23:00",
+            "effect": "aurora",
+            "params": {
+                "speed": 10.0,
+                "brightness": 60
+            }
+        },
+        {
+            "name": "porch overnight clock",
+            "group": "porch",
+            "start": "23:00",
+            "stop": "sunrise-30m",
+            "effect": "binclock",
+            "params": {
+                "brightness": 40
+            }
+        },
+        {
+            "name": "living room evening",
+            "days": "MTWRF",
+            "group": "living-room",
+            "start": "sunset",
+            "stop": "23:30",
+            "effect": "cylon",
+            "params": {
+                "speed": 4.0,
+                "brightness": 50
+            }
+        }
+    ]
+}

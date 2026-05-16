@@ -1,0 +1,2145 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>GlowUp Dashboard</title>
+<style>
+  :root {
+    /* Neutral dark palette — softer than navy+hot-pink.  Accent is a
+       muted indigo; status colors are desaturated so a wall of badges
+       reads calmly rather than clamoring for attention. */
+    --bg: #1a1b1f;           /* neutral dark, not navy */
+    --surface: #23252b;      /* card background */
+    --border: #33363d;       /* subtle separator */
+    --text: #e8eaed;          /* primary text */
+    --dim: #9aa0a6;           /* secondary/meta text */
+    --accent: #7c9cff;        /* soft periwinkle — titles, links */
+    --green: #57cc8a;         /* success / ON / playing */
+    --orange: #e8a04d;        /* warning / override */
+    --red: #e5767b;           /* delete / error — used via fallback */
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "SF Mono", Menlo, monospace;
+    background: var(--bg);
+    color: var(--text);
+    padding: 20px;
+    font-size: 14px;
+  }
+  h1 {
+    font-size: 22px;
+    margin-bottom: 6px;
+    color: var(--accent);
+  }
+  .header-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .header-left h1 { margin-bottom: 2px; }
+  .header-left .subtitle {
+    color: var(--dim);
+    font-size: 12px;
+  }
+  .header-right {
+    text-align: right;
+    font-size: 10px;
+    color: var(--dim);
+    max-width: 50%;
+    line-height: 1.4;
+  }
+  .header-right .copyright { color: var(--text); font-size: 11px; }
+  .grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin-bottom: 16px;
+  }
+  @media (max-width: 768px) {
+    .grid { grid-template-columns: 1fr; }
+  }
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 16px;
+  }
+  .card h2 {
+    font-size: 14px;
+    color: var(--accent);
+    margin-bottom: 12px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+  }
+  .device-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .device-row:last-child { border-bottom: none; }
+  .device-name { font-weight: 600; }
+  .device-meta { color: var(--dim); font-size: 12px; }
+  .device-effect { color: var(--green); font-size: 13px; }
+  .device-idle { color: var(--dim); }
+  .badge {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 11px;
+    font-weight: 600;
+  }
+  .badge-playing { background: var(--green); color: #000; }
+  .badge-stopped { background: var(--border); color: var(--dim); }
+  .badge-overridden { background: var(--orange); color: #000; }
+  .badge-active { background: var(--green); color: #000; }
+  .badge-disabled { background: var(--border); color: var(--dim); }
+  .badge-in-group { background: var(--accent); color: #fff; }
+  .badge-off { background: var(--border); color: var(--dim); opacity: 0.6; }
+  .stat-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 12px;
+    text-align: center;
+  }
+  .stat-value {
+    font-size: 28px;
+    font-weight: 700;
+    color: var(--accent);
+  }
+  .stat-label {
+    font-size: 11px;
+    color: var(--dim);
+    text-transform: uppercase;
+  }
+  .error {
+    color: var(--accent);
+    padding: 20px;
+    text-align: center;
+  }
+  .schedule-row {
+    display: grid;
+    /* Info fills available space; buttons centered; status right-aligned in equal-width column */
+    grid-template-columns: 1fr auto 1fr;
+    align-items: center;
+    gap: 12px;
+    padding: 8px 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .schedule-row:last-child { border-bottom: none; }
+  .schedule-info { min-width: 0; } /* Allow text to truncate in tight layouts */
+  .schedule-actions { display: flex; align-items: center; justify-content: center; gap: 6px; }
+  .schedule-status { display: flex; align-items: center; justify-content: flex-end; }
+  /* Enable/disable toggle button */
+  .btn-toggle {
+    background: var(--border);
+    color: var(--text);
+    border: none;
+    border-radius: 4px;
+    padding: 2px 8px;
+    font-size: 12px;
+    cursor: pointer;
+  }
+  .btn-toggle:hover { background: var(--accent); color: #fff; }
+  .btn-toggle.is-enabled { background: var(--green); color: #000; }
+  .btn-toggle.is-disabled { background: var(--border); color: var(--dim); }
+  /* Delete button in schedule row */
+  .btn-delete {
+    background: transparent;
+    color: var(--red, #e74c3c);
+    border: 1px solid var(--red, #e74c3c);
+    border-radius: 4px;
+    padding: 2px 8px;
+    font-size: 12px;
+    cursor: pointer;
+  }
+  .btn-delete:hover { background: var(--red, #e74c3c); color: #fff; }
+  /* Inline confirmation strip replaces schedule-row content */
+  .schedule-confirm-delete {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 8px 0;
+  }
+  .schedule-confirm-delete .confirm-msg {
+    font-size: 13px;
+    color: var(--text);
+  }
+  .schedule-confirm-delete .confirm-msg strong {
+    color: var(--red, #e74c3c);
+  }
+  .schedule-confirm-delete .confirm-buttons {
+    display: flex;
+    gap: 8px;
+    flex-shrink: 0;
+  }
+  .btn-confirm-cancel {
+    background: var(--border);
+    color: var(--text);
+    border: none;
+    border-radius: 4px;
+    padding: 4px 12px;
+    font-size: 12px;
+    cursor: pointer;
+  }
+  .btn-confirm-cancel:hover { background: var(--accent); color: #fff; }
+  .btn-confirm-delete {
+    background: var(--red, #e74c3c);
+    color: #fff;
+    border: none;
+    border-radius: 4px;
+    padding: 4px 12px;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  .btn-confirm-delete:hover { opacity: 0.85; }
+  /* Group creation modal — scrollable device checklist */
+  .group-device-list {
+    max-height: 280px;
+    overflow-y: auto;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 8px;
+    background: var(--bg);
+  }
+  .group-device-list .section-label {
+    font-size: 10px;
+    text-transform: uppercase;
+    color: var(--dim);
+    padding: 4px 0 2px;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 2px;
+  }
+  .group-device-item {
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    align-items: center;
+    gap: 8px;
+    padding: 5px 4px;
+    border-bottom: 1px solid var(--border);
+    cursor: pointer;
+  }
+  .group-device-item:last-child { border-bottom: none; }
+  .group-device-item:hover { background: rgba(255,255,255,0.04); }
+  /* Override modal-wide input styles for checkboxes in device list */
+  .group-device-item input[type="checkbox"] {
+    width: auto;
+    padding: 0;
+    border: none;
+    background: none;
+    flex-shrink: 0;
+    accent-color: var(--green);
+  }
+  .group-device-label {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+  }
+  .group-device-label .dev-name { font-size: 13px; font-weight: 600; }
+  .group-device-label .dev-meta { font-size: 11px; color: var(--dim); }
+  /* Reorder arrows for selected devices */
+  .group-reorder {
+    display: flex;
+    gap: 2px;
+  }
+  .group-reorder button {
+    background: var(--border);
+    color: var(--text);
+    border: none;
+    border-radius: 3px;
+    width: 22px;
+    height: 22px;
+    font-size: 12px;
+    cursor: pointer;
+    padding: 0;
+    line-height: 1;
+  }
+  .group-reorder button:hover { background: var(--accent); color: #fff; }
+  /* Group row — 3-column grid like schedule rows */
+  .group-row {
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
+    align-items: center;
+    gap: 12px;
+    padding: 8px 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .group-row:last-child { border-bottom: none; }
+  .group-actions { display: flex; align-items: center; justify-content: center; gap: 6px; }
+  /* Add-schedule button beside the Schedule heading */
+  .btn-add-schedule {
+    background: var(--green);
+    color: #000;
+    border: none;
+    border-radius: 4px;
+    padding: 0 8px;
+    font-size: 16px;
+    font-weight: 700;
+    cursor: pointer;
+    margin-left: 8px;
+    vertical-align: middle;
+    line-height: 1.4;
+  }
+  .btn-add-schedule:hover { background: var(--accent); color: #fff; }
+  .schedule-name { font-weight: 600; }
+  .schedule-time { color: var(--dim); font-size: 12px; }
+  .schedule-effect { color: var(--green); }
+  .schedule-group { color: var(--orange); font-size: 12px; }
+  .discovered-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 6px 0;
+    border-bottom: 1px solid var(--border);
+    font-size: 13px;
+    flex-wrap: wrap;
+    row-gap: 2px;
+  }
+  .discovered-row:last-child { border-bottom: none; }
+  .discovered-ip { font-weight: 600; color: var(--green); }
+  .discovered-label { color: var(--text); }
+  .discovered-mac { color: var(--dim); font-family: monospace; font-size: 12px; }
+  /* Inline labeling controls added to each discovered-bulbs row.
+     Per-row: editable label input + Identify button + error slot.
+     Label input is borderless at rest, bordered on hover/focus, so
+     the row stays visually calm until the user is actually editing. */
+  .discovered-main {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex: 1;
+    min-width: 0;
+  }
+  .discovered-label-input {
+    background: transparent;
+    border: 1px solid transparent;
+    color: var(--text);
+    font-size: 13px;
+    padding: 2px 6px;
+    border-radius: 3px;
+    min-width: 140px;
+    outline: none;
+    font-family: inherit;
+  }
+  .discovered-label-input:hover {
+    border-color: var(--border);
+  }
+  .discovered-label-input:focus {
+    border-color: var(--accent);
+    background: var(--bg);
+  }
+  .discovered-label-input::placeholder {
+    color: var(--dim);
+    font-style: italic;
+  }
+  .btn-identify {
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 2px 10px;
+    border-radius: 3px;
+    font-size: 12px;
+    cursor: pointer;
+    font-family: inherit;
+  }
+  .btn-identify:hover {
+    background: var(--accent);
+    color: #fff;
+    border-color: var(--accent);
+  }
+  .btn-identify.active {
+    background: var(--green);
+    color: #fff;
+    border-color: var(--green);
+  }
+  .btn-identify:disabled {
+    opacity: 0.5;
+    cursor: default;
+  }
+  .discovered-error {
+    flex-basis: 100%;
+    color: var(--accent);
+    font-size: 11px;
+    padding: 2px 0 4px 0;
+  }
+  .refresh-note {
+    color: var(--dim);
+    font-size: 11px;
+    text-align: right;
+    margin-top: 8px;
+  }
+  .group-members {
+    color: var(--dim);
+    font-size: 11px;
+    margin-top: 2px;
+  }
+  /* Schedule edit modal */
+  .modal-overlay {
+    display: none;
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(0,0,0,0.7);
+    z-index: 1000;
+    align-items: center;
+    justify-content: center;
+  }
+  .modal-overlay.active { display: flex; }
+  .modal {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 24px;
+    width: 480px;
+    max-width: 90vw;
+    max-height: 80vh;
+    overflow-y: auto;
+  }
+  .modal h3 { margin-bottom: 16px; }
+  .modal label {
+    display: block;
+    font-size: 12px;
+    color: var(--dim);
+    margin-top: 12px;
+    margin-bottom: 4px;
+    text-transform: uppercase;
+  }
+  .modal input, .modal select {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 8px 12px;
+    border-radius: 6px;
+    font-size: 14px;
+    width: 100%;
+    font-family: inherit;
+  }
+  .modal select { cursor: pointer; }
+  .modal-buttons {
+    display: flex;
+    gap: 8px;
+    margin-top: 20px;
+    justify-content: flex-end;
+  }
+  .modal-buttons button {
+    padding: 8px 20px;
+    border-radius: 6px;
+    font-size: 13px;
+    cursor: pointer;
+    font-family: inherit;
+    border: none;
+  }
+  .btn-save { background: var(--green); color: #000; font-weight: 600; }
+  .btn-cancel { background: var(--border); color: var(--text); }
+  .modal-error {
+    color: var(--accent);
+    font-size: 13px;
+    margin-top: 12px;
+    display: none;
+  }
+  .btn-edit {
+    background: var(--border);
+    color: var(--text);
+    border: none;
+    padding: 3px 10px;
+    border-radius: 4px;
+    font-size: 11px;
+    cursor: pointer;
+    font-family: inherit;
+    margin-left: 8px;
+  }
+  .btn-edit:hover { background: var(--accent); color: #fff; }
+  /* Power toggle button — green when on, dim when off */
+  .btn-power {
+    background: var(--border);
+    color: var(--dim);
+    border: none;
+    padding: 3px 10px;
+    border-radius: 4px;
+    font-size: 11px;
+    cursor: pointer;
+    font-family: inherit;
+  }
+  .btn-power:hover { background: var(--accent); color: #fff; }
+  .btn-power.is-on { background: var(--green); color: #000; }
+  .btn-power.is-off { background: var(--border); color: var(--dim); }
+  /* Reintrospect button — subtle, only on multizone/matrix devices. */
+  .btn-reintro {
+    background: var(--border);
+    color: var(--dim);
+    border: none;
+    padding: 3px 8px;
+    border-radius: 4px;
+    font-size: 10px;
+    cursor: pointer;
+    font-family: inherit;
+  }
+  .btn-reintro:hover { background: var(--accent); color: #fff; }
+  .time-hint {
+    font-size: 11px;
+    color: var(--dim);
+    margin-top: 2px;
+  }
+  #auth-form {
+    max-width: 400px;
+    margin: 100px auto;
+    text-align: center;
+  }
+  #auth-form input {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 10px 16px;
+    border-radius: 6px;
+    font-size: 14px;
+    width: 100%;
+    margin: 12px 0;
+    font-family: inherit;
+  }
+  #auth-form button {
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    padding: 10px 24px;
+    border-radius: 6px;
+    font-size: 14px;
+    cursor: pointer;
+    font-family: inherit;
+  }
+</style>
+</head>
+<body>
+
+<!-- Site nav — built dynamically from /api/config/nav. -->
+<nav id="siteNav" style="display:flex;gap:18px;padding:6px 16px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:0.8rem;letter-spacing:0.04em;"></nav>
+
+<script src="/js/site_nav.js" defer></script>
+
+<div id="auth-form">
+  <h1>GlowUp Dashboard</h1>
+  <p style="color: var(--dim); margin-top: 8px;">Enter your API token</p>
+  <input type="password" id="token-input" placeholder="Bearer token">
+  <br>
+  <button onclick="authenticate()">Connect</button>
+</div>
+
+<div id="dashboard" style="display:none;">
+  <div class="header-bar">
+    <div class="header-left">
+      <h1>GlowUp Dashboard</h1>
+      <div class="subtitle">Auto-refreshes every 5 seconds &middot; <a href="/traffic" style="color: var(--dim); text-decoration: none; border-bottom: 1px dotted var(--dim);">Traffic</a></div>
+    </div>
+    <div class="header-right">
+      <div class="copyright">&copy; 2026 Perry Kivolowitz &middot; MIT License</div>
+      <div>PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, INCLUDING MERCHANTABILITY OR FITNESS FOR A PARTICULAR PURPOSE.</div>
+    </div>
+  </div>
+
+  <div class="card" style="margin-bottom: 16px;">
+    <div class="stat-grid">
+      <div><div class="stat-value" id="stat-devices">-</div><div class="stat-label">Devices</div></div>
+      <div><div class="stat-value" id="stat-playing">-</div><div class="stat-label">Playing</div></div>
+      <div><div class="stat-value" id="stat-discovered" style="color: var(--green);">-</div><div class="stat-label">Found (ARP)</div></div>
+      <div><div class="stat-value" id="stat-schedule">-</div><div class="stat-label">Schedule</div></div>
+      <div><button class="btn-power" style="padding: 8px 16px; font-size: 14px;" onclick="rediscover()">Rediscover</button></div>
+    </div>
+  </div>
+
+  <div class="grid">
+    <div class="card">
+      <h2>Now Playing</h2>
+      <div id="now-playing"><div class="error">Loading...</div></div>
+    </div>
+    <div class="card">
+      <h2 style="display:inline;">Schedule</h2>
+      <button class="btn-add-schedule" onclick="openNewScheduleModal()">+</button>
+      <div id="schedule"><div class="error">Loading...</div></div>
+    </div>
+    <div class="card">
+      <h2 style="display:inline;">Automations</h2>
+      <button class="btn-add-schedule" onclick="openNewAutomationModal()">+</button>
+      <div id="automations"><div class="error">Loading...</div></div>
+    </div>
+  </div>
+
+  <div class="grid">
+    <details class="card" id="devices-details">
+      <summary><h2 style="display:inline;cursor:pointer;">Devices</h2></summary>
+      <div id="devices" style="margin-top:12px;"><div class="error">Loading...</div></div>
+    </details>
+    <details class="card" id="groups-details">
+      <summary><h2 style="display:inline;cursor:pointer;">Groups</h2>
+        <button class="btn-add-schedule" onclick="event.preventDefault(); openNewGroupModal();">+</button>
+      </summary>
+      <div id="groups" style="margin-top:12px;"><div class="error">Loading...</div></div>
+    </details>
+  </div>
+
+  <details class="card" style="margin-top: 16px;">
+    <summary><h2 style="display:inline;cursor:pointer;">Discovered Devices (ARP Keepalive)</h2></summary>
+    <div id="discovered-bulbs" style="margin-top:12px;"><div class="device-idle" style="padding:8px 0;">Waiting for ARP scan...</div></div>
+  </details>
+
+  <div class="refresh-note">Last update: <span id="last-update">-</span></div>
+</div>
+
+<div class="modal-overlay" id="sched-modal">
+  <div class="modal">
+    <h3 id="sched-modal-title">Edit Schedule Entry</h3>
+    <input type="hidden" id="sched-idx">
+    <label>Name</label>
+    <input type="text" id="sched-name" placeholder="porch evening aurora">
+    <label>Group</label>
+    <select id="sched-group"></select>
+    <label>Effect</label>
+    <select id="sched-effect"></select>
+    <label>Start</label>
+    <input type="text" id="sched-start" placeholder="sunset-30m">
+    <label>Stop</label>
+    <input type="text" id="sched-stop" placeholder="23:00">
+    <div class="time-hint">HH:MM or sunrise/sunset/dawn/dusk/noon/midnight with optional +-Nh/Mm offset</div>
+    <label>Days (blank = every day)</label>
+    <input type="text" id="sched-days" placeholder="mon,wed,fri or blank for all">
+    <label>Params (JSON)</label>
+    <input type="text" id="sched-params" placeholder='{"speed": 10.0, "brightness": 100}'>
+    <div class="modal-error" id="sched-error"></div>
+    <div class="modal-buttons">
+      <button class="btn-cancel" onclick="closeScheduleModal()">Cancel</button>
+      <button class="btn-save" onclick="saveScheduleEntry()">Save</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="group-modal">
+  <div class="modal">
+    <h3 id="group-modal-title">New Group</h3>
+    <input type="hidden" id="group-original-name" value="">
+    <label>Group Name</label>
+    <input type="text" id="group-name" placeholder="e.g. porch, office">
+    <label>Devices</label>
+    <div id="group-device-list" class="group-device-list"></div>
+    <div class="modal-error" id="group-error"></div>
+    <div class="modal-buttons">
+      <button class="btn-cancel" onclick="closeGroupModal()">Cancel</button>
+      <button class="btn-save" onclick="saveGroup()">Save</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="auto-modal">
+  <div class="modal">
+    <h3 id="auto-modal-title">New Automation</h3>
+    <input type="hidden" id="auto-idx" value="-1">
+    <label>Name</label>
+    <input type="text" id="auto-name" placeholder="Living room motion">
+    <label>Sensor Label</label>
+    <input type="text" id="auto-sensor-label" placeholder="hallway_motion">
+    <label>Characteristic</label>
+    <select id="auto-characteristic">
+      <option value="motion">motion</option>
+      <option value="temperature">temperature</option>
+      <option value="humidity">humidity</option>
+    </select>
+    <label>Trigger Condition</label>
+    <div style="display:flex;gap:8px;">
+      <select id="auto-trigger-cond" style="width:40%;">
+        <option value="eq">equals</option>
+        <option value="gt">greater than</option>
+        <option value="lt">less than</option>
+        <option value="gte">greater or equal</option>
+        <option value="lte">less or equal</option>
+      </select>
+      <input type="number" id="auto-trigger-val" style="width:60%;" placeholder="1" value="1">
+    </div>
+    <label>Target Group</label>
+    <select id="auto-group"></select>
+    <label>Effect</label>
+    <select id="auto-effect"></select>
+    <label>Effect Params (JSON)</label>
+    <input type="text" id="auto-params" placeholder='{"brightness": 70}'>
+    <label>Off Trigger</label>
+    <div style="display:flex;gap:8px;align-items:center;">
+      <select id="auto-off-type" style="width:40%;" onchange="toggleAutoOffFields()">
+        <option value="watchdog">Watchdog (timeout)</option>
+        <option value="condition">Sensor condition</option>
+      </select>
+      <input type="number" id="auto-off-minutes" style="width:60%;" placeholder="30" value="30">
+    </div>
+    <div id="auto-off-condition-row" style="display:none;margin-top:8px;">
+      <div style="display:flex;gap:8px;">
+        <select id="auto-off-cond" style="width:40%;">
+          <option value="eq">equals</option>
+          <option value="lt">less than</option>
+        </select>
+        <input type="number" id="auto-off-val" style="width:60%;" placeholder="0">
+      </div>
+    </div>
+    <label>Off Effect</label>
+    <select id="auto-off-effect"></select>
+    <label>Schedule Conflict</label>
+    <select id="auto-conflict">
+      <option value="defer">Defer (schedule wins)</option>
+      <option value="override">Override (automation wins)</option>
+      <option value="coexist">Coexist (last write wins)</option>
+    </select>
+    <div class="modal-error" id="auto-error"></div>
+    <div class="modal-buttons">
+      <button class="btn-cancel" onclick="closeAutomationModal()">Cancel</button>
+      <button class="btn-save" onclick="saveAutomation()">Save</button>
+    </div>
+  </div>
+</div>
+
+<script>
+let TOKEN = '';
+const BASE = window.location.origin;
+
+// Polling state — managed by startPolling / stopPolling.
+let pollTimer = null;
+
+// Normal and backoff poll intervals (milliseconds).
+const POLL_INTERVAL_MS = 5000;
+const BACKOFF_INTERVAL_MS = 30000;
+
+// True while a refresh() cycle is in flight — prevents overlapping fetches.
+let refreshInFlight = false;
+
+function startPolling(intervalMs) {
+  stopPolling();
+  pollTimer = setInterval(refresh, intervalMs);
+}
+
+function stopPolling() {
+  if (pollTimer !== null) {
+    clearInterval(pollTimer);
+    pollTimer = null;
+  }
+}
+
+function showAuth() {
+  stopPolling();
+  TOKEN = '';
+  localStorage.removeItem('glowup_token');
+  document.getElementById('auth-form').style.display = 'block';
+  document.getElementById('dashboard').style.display = 'none';
+}
+
+function showDashboard() {
+  document.getElementById('auth-form').style.display = 'none';
+  document.getElementById('dashboard').style.display = 'block';
+}
+
+function authenticate() {
+  TOKEN = document.getElementById('token-input').value.trim();
+  if (!TOKEN) return;
+  localStorage.setItem('glowup_token', TOKEN);
+  showDashboard();
+  refresh();
+  startPolling(POLL_INTERVAL_MS);
+}
+
+// Auto-login if token is stored.
+window.addEventListener('load', () => {
+  const saved = localStorage.getItem('glowup_token');
+  if (saved) {
+    TOKEN = saved;
+    showDashboard();
+    refresh();
+    startPolling(POLL_INTERVAL_MS);
+  }
+});
+
+async function api(path) {
+  const r = await fetch(BASE + path, {
+    headers: { 'Authorization': 'Bearer ' + TOKEN }
+  });
+  if (r.status === 401) return { _authFailed: true };
+  if (r.status === 429) return { _rateLimited: true };
+  if (!r.ok) return { _error: true, status: r.status };
+  return r.json();
+}
+
+async function refresh() {
+  if (refreshInFlight) return;
+  refreshInFlight = true;
+  try {
+    const [devices, schedule, discovered, configGroups, automationsResp, stateResp, matterResp] = await Promise.all([
+      api('/api/devices'),
+      api('/api/schedule'),
+      api('/api/discovered_bulbs'),
+      api('/api/groups'),
+      api('/api/automations'),
+      api('/api/state'),
+      api('/api/matter/devices'),
+    ]);
+
+    const results = [devices, schedule, discovered, configGroups, automationsResp, stateResp, matterResp];
+
+    // Any 401 → back to login.
+    if (results.some(r => r && r._authFailed)) {
+      showAuth();
+      return;
+    }
+
+    // Any 429 → back off polling.
+    if (results.some(r => r && r._rateLimited)) {
+      startPolling(BACKOFF_INTERVAL_MS);
+      document.getElementById('last-update').textContent =
+        'Rate limited \u2014 backing off to 30s polling';
+      return;
+    }
+
+    // Any other error → skip this cycle.
+    if (results.some(r => r && r._error)) {
+      document.getElementById('last-update').textContent =
+        'Server error \u2014 retrying in 5s';
+      return;
+    }
+
+    // Ensure normal poll rate after success.
+    startPolling(POLL_INTERVAL_MS);
+
+    // State store: IP → {source, entry, effect, ...} for enriching
+    // the "Now Playing" section with schedule entry names.
+    const stateByIp = {};
+    const stateRows = Array.isArray(stateResp) ? stateResp : [];
+    stateRows.forEach(s => { stateByIp[s.ip] = s; });
+
+    // Split devices into physical and groups.
+    const devList = devices.devices || [];
+    const physical = devList.filter(d => !d.is_group);
+
+    // Build groups from config (authoritative source of group names
+    // and membership).  Enrich each with runtime status (zones,
+    // current_effect) from the device list when available.
+    const runtimeGroups = devList.filter(d => d.is_group);
+    const runtimeByLabel = {};
+    runtimeGroups.forEach(g => { runtimeByLabel[g.label] = g; });
+    const cfgGroups = (configGroups && configGroups.groups) || {};
+    const groups = [];
+    for (const [gName, gMembers] of Object.entries(cfgGroups)) {
+      if (gName.startsWith('_')) continue;
+      const rt = runtimeByLabel[gName];
+      groups.push({
+        ip: rt ? rt.ip : 'group:' + gName,
+        label: gName,
+        is_group: true,
+        current_effect: rt ? rt.current_effect : null,
+        power: rt ? rt.power : undefined,
+        zones: rt ? rt.zones : 0,
+        member_ips: rt ? (rt.member_ips || []) : (Array.isArray(gMembers) ? gMembers : []),
+      });
+    }
+
+    // Determine which devices/groups are playing.
+    // Devices count as playing if they have a direct effect.
+    // Skip devices that are only playing via a group — the group row
+    // already represents them, showing each member is redundant.
+    const playing = physical.filter(d => d.current_effect && !d.group_effect);
+    const playingGroups = groups.filter(g => g.current_effect);
+
+    // Stats — count both physical and group playing.
+    document.getElementById('stat-devices').textContent = physical.length;
+    document.getElementById('stat-playing').textContent =
+      playing.length + playingGroups.length;
+
+    const bulbs = (discovered && discovered.discovered_bulbs) || [];
+    document.getElementById('stat-discovered').textContent = bulbs.length;
+
+    const entries = (schedule && schedule.entries) || [];
+    const activeCount = entries.filter(e => e.active).length;
+    document.getElementById('stat-schedule').textContent =
+      activeCount + '/' + entries.length;
+
+    // Now Playing — derived from device list current_effect.
+    const npEl = document.getElementById('now-playing');
+    let npHtml = '';
+
+    // Physical devices playing (direct effect or group effect).
+    npHtml += playing.map(d => {
+      const name = d.nickname || d.label || d.ip;
+      const effectName = d.current_effect || d.group_effect;
+      const srcBadge = d.source
+        ? ` <span class="badge badge-overridden">${esc(d.source)}</span>`
+        : '';
+      const viaBadge = d.group_effect && !d.current_effect
+        ? ` <span class="badge badge-in-group">via ${esc(d.group_name)}</span>`
+        : '';
+      // Schedule entry name from state store — shows which schedule
+      // entry is driving this device when source is "scheduler".
+      const st = stateByIp[d.ip];
+      const entryBadge = (st && st.entry)
+        ? ` <span class="badge badge-disabled">${esc(st.entry)}</span>`
+        : '';
+      const zoneMeta = d.is_matrix
+        ? (d.width + '\u00d7' + d.height + ' matrix')
+        : ((d.zones || 1) + ' zones');
+      return `
+        <div class="device-row">
+          <div>
+            <div class="device-name">${esc(name)}</div>
+            <div class="device-effect">${esc(effectName)}</div>
+            <div class="device-meta">${esc(d.product || '')} &middot; ${zoneMeta}</div>
+          </div>
+          <div style="text-align:right;">
+            <span class="badge badge-playing">LIVE</span>${srcBadge}${entryBadge}${viaBadge}
+          </div>
+        </div>
+      `;
+    }).join('');
+
+    // Groups playing.
+    npHtml += playingGroups.map(g => {
+      const srcBadge = g.source
+        ? ` <span class="badge badge-overridden">${esc(g.source)}</span>`
+        : '';
+      // Look up entry name from state store via any member IP.
+      const mIps = g.member_ips || [];
+      const mState = mIps.map(ip => stateByIp[ip]).find(s => s && s.entry);
+      const entryBadge = mState
+        ? ` <span class="badge badge-disabled">${esc(mState.entry)}</span>`
+        : '';
+      return `
+        <div class="device-row">
+          <div>
+            <div class="device-name">Group: ${esc(g.label || g.ip)}</div>
+            <div class="device-effect">${esc(g.current_effect)}</div>
+            <div class="device-meta">${g.zones || 0} zones</div>
+          </div>
+          <div style="text-align:right;">
+            <span class="badge badge-playing">LIVE</span>${srcBadge}${entryBadge}
+          </div>
+        </div>
+      `;
+    }).join('');
+
+    npEl.innerHTML = npHtml || '<div class="device-idle" style="padding:8px 0;">Nothing playing</div>';
+
+    // Schedule.
+    const sEl = document.getElementById('schedule');
+    if (entries.length === 0) {
+      sEl.innerHTML =
+        '<div class="device-idle" style="padding:8px 0;">No schedule configured</div>';
+    } else {
+      sEl.innerHTML = entries.map(e => {
+        const badge = e.active
+          ? '<span class="badge badge-active">ACTIVE</span>'
+          : e.enabled
+            ? '<span class="badge badge-stopped">WAITING</span>'
+            : '<span class="badge badge-disabled">OFF</span>';
+        const times = (e.start_resolved && e.stop_resolved)
+          ? e.start_resolved + ' \u2192 ' + e.stop_resolved
+          : e.start + ' \u2192 ' + e.stop;
+        const edata = JSON.stringify(e).replace(/'/g, '&#39;').replace(/"/g, '&quot;');
+        return `
+          <div class="schedule-row">
+            <div class="schedule-info">
+              <span class="schedule-name">${esc(e.name)}</span>
+              <div style="margin-top:4px;">
+                <span class="schedule-effect">${esc(e.effect)}</span>
+                <span class="schedule-group">${esc(e.group)}</span>
+                <span class="schedule-time">${esc(times)} &middot; ${esc(e.days_display)}</span>
+              </div>
+            </div>
+            <div class="schedule-actions">
+              <button class="btn-edit" data-entry="${edata}" onclick="openScheduleModal(JSON.parse(this.dataset.entry))">Edit</button>
+              <button class="btn-toggle ${e.enabled ? 'is-enabled' : 'is-disabled'}"
+                      onclick="toggleScheduleEnabled(${e.index}, ${!e.enabled})">${e.enabled ? 'ON' : 'OFF'}</button>
+              <button class="btn-delete"
+                      onclick="confirmDeleteSchedule(this, ${e.index}, '${esc(e.name).replace(/'/g, "\\'")}')">&times;</button>
+            </div>
+            <div class="schedule-status">
+              ${badge}
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    // Automations.
+    const autoEntries = (automationsResp && automationsResp.automations) || [];
+    const aEl = document.getElementById('automations');
+    if (autoEntries.length === 0) {
+      aEl.innerHTML = '<div class="device-idle" style="padding:8px 0;">No automations configured</div>';
+    } else {
+      aEl.innerHTML = autoEntries.map(a => {
+        const badge = a.active
+          ? '<span class="badge badge-active">ACTIVE</span>'
+          : a.enabled
+            ? '<span class="badge badge-stopped">WAITING</span>'
+            : '<span class="badge badge-disabled">OFF</span>';
+        const sensor = (a.sensor && a.sensor.label) || '?';
+        const char = (a.sensor && a.sensor.characteristic) || '?';
+        const group = (a.action && a.action.group) || '?';
+        const effect = (a.action && a.action.effect) || '?';
+        const offType = (a.off_trigger && a.off_trigger.type) || 'watchdog';
+        const offMin = (a.off_trigger && a.off_trigger.minutes) || 30;
+        const offInfo = offType === 'watchdog' ? offMin + 'm timeout' : 'condition';
+        const adata = JSON.stringify(a).replace(/'/g, '&#39;').replace(/"/g, '&quot;');
+        return `
+          <div class="schedule-row">
+            <div class="schedule-info">
+              <span class="schedule-name">${esc(a.name)}</span>
+              <div style="margin-top:4px;">
+                <span class="schedule-effect">${esc(effect)}</span>
+                <span class="schedule-group">${esc(group)}</span>
+                <span class="schedule-time">${esc(sensor)} (${esc(char)}) &middot; ${esc(offInfo)}</span>
+              </div>
+            </div>
+            <div class="schedule-actions">
+              <button class="btn-edit" data-entry="${adata}" onclick="openAutomationModal(JSON.parse(this.dataset.entry))">Edit</button>
+              <button class="btn-toggle ${a.enabled ? 'is-enabled' : 'is-disabled'}"
+                      onclick="toggleAutomationEnabled(${a.index}, ${!a.enabled})">${a.enabled ? 'ON' : 'OFF'}</button>
+              <button class="btn-delete"
+                      onclick="confirmDeleteAutomation(this, ${a.index}, '${esc(a.name).replace(/'/g, "\\'")}')">&times;</button>
+            </div>
+            <div class="schedule-status">
+              ${badge}
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    // Physical Devices + Matter switches (merged into one list).
+    const matterDevices = (matterResp && matterResp.devices) || [];
+    matterDevices.forEach(md => {
+      physical.push({
+        _matter: true,
+        ip: 'matter:' + md.name,
+        label: 'matter: ' + md.name,
+        product: 'Matter Switch',
+        zones: 1,
+        node_id: md.node_id,
+        power: md.power,
+      });
+    });
+
+    const dEl = document.getElementById('devices');
+    if (physical.length === 0) {
+      dEl.innerHTML =
+        '<div class="device-idle" style="padding:8px 0;">No devices</div>';
+    } else {
+      dEl.innerHTML = physical.map(d => {
+        const name = d.nickname || d.label || d.ip;
+        const isPlaying = !!d.current_effect;
+        const inGroup = !!d.group_effect;
+        let badge, effectLine = '';
+        if (isPlaying) {
+          badge = '<span class="badge badge-playing">PLAYING</span>';
+          effectLine = `<div class="device-effect">${esc(d.current_effect)}</div>`;
+        } else if (inGroup) {
+          badge = `<span class="badge badge-in-group">${esc(d.group_effect)}</span>`;
+          effectLine = `<div class="device-effect">via ${esc(d.group_name)}</div>`;
+        } else if (d.power === false) {
+          badge = '<span class="badge badge-off">OFF</span>';
+        } else {
+          badge = '<span class="badge badge-stopped">IDLE</span>';
+        }
+        const zoneMeta = d.is_matrix
+          ? (d.width + '\u00d7' + d.height + ' matrix')
+          : ((d.zones || 1) + ' zones');
+        const powerOn = d.power !== false;
+        let powerBtn, reintroBtn = '';
+        if (d._matter) {
+          // Matter switch — use real power state for toggle.
+          const mName = d.ip.substring(7);
+          const mOn = d.power === true;
+          powerBtn = `<button class="btn-power ${mOn ? 'is-on' : 'is-off'}" onclick="matterToggle('${esc(mName).replace(/'/g, "\\'")}')">` + (mOn ? 'ON' : 'OFF') + `</button>`;
+        } else {
+          powerBtn = `<button class="btn-power ${powerOn ? 'is-on' : 'is-off'}" onclick="togglePower('${esc(d.ip).replace(/'/g, "\\'")}', ${powerOn})">${powerOn ? 'ON' : 'OFF'}</button>`;
+          reintroBtn = (d.is_multizone || d.is_matrix)
+            ? `<button class="btn-reintro" onclick="reintrospect('${esc(d.ip).replace(/'/g, "\\'")}')" title="Re-query zone count">Recount</button>`
+            : '';
+        }
+        return `
+          <div class="device-row">
+            <div>
+              <div class="device-name">${esc(name)}</div>
+              ${effectLine}
+              <div class="device-meta">${esc(d.product || '')} &middot; ${zoneMeta}</div>
+            </div>
+            <div style="display:flex;align-items:center;gap:8px;">
+              ${reintroBtn}
+              ${powerBtn}
+              ${badge}
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    // Groups.
+    const gEl = document.getElementById('groups');
+    if (groups.length === 0) {
+      gEl.innerHTML =
+        '<div class="device-idle" style="padding:8px 0;">No groups configured</div>';
+    } else {
+      gEl.innerHTML = groups.map(g => {
+        const name = g.label || g.ip;
+        const isPlaying = !!g.current_effect;
+        let badge, effectLine = '';
+        if (isPlaying) {
+          badge = '<span class="badge badge-playing">PLAYING</span>';
+          effectLine = `<div class="device-effect">${esc(g.current_effect)}</div>`;
+        } else if (g.power === false) {
+          badge = '<span class="badge badge-off">OFF</span>';
+        } else {
+          badge = '<span class="badge badge-stopped">IDLE</span>';
+        }
+        const memberCount = (g.member_ips || []).length;
+        const membersJson = JSON.stringify(g.member_ips || []).replace(/'/g, '&#39;').replace(/"/g, '&quot;');
+        const gPowerOn = g.power === true;
+        const gPowerBtn = `<button class="btn-power ${gPowerOn ? 'is-on' : 'is-off'}" onclick="togglePower('${esc(g.ip).replace(/'/g, "\\'")}', ${gPowerOn})">${gPowerOn ? 'ON' : 'OFF'}</button>`;
+        return `
+          <div class="group-row">
+            <div>
+              <div class="device-name">${esc(name)}</div>
+              ${effectLine}
+              <div class="device-meta">${g.zones || 0} zones &middot; ${memberCount} devices</div>
+            </div>
+            <div class="group-actions">
+              ${gPowerBtn}
+              <button class="btn-edit" onclick="openEditGroupModal('${esc(name).replace(/'/g, "\\'")}', JSON.parse(this.dataset.members))" data-members="${membersJson}">Edit</button>
+              <button class="btn-delete" onclick="confirmDeleteGroup(this, '${esc(name).replace(/'/g, "\\'")}')">&times;</button>
+            </div>
+            <div class="schedule-status">
+              ${badge}
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    // Discovered Devices — cross-reference with device list for
+    // labels, product type, and zone count.  Each row exposes an
+    // inline label input and an Identify button so the user can
+    // label unknown devices directly from the dashboard without
+    // touching the CLI registry tool.
+    const devByIp = {};
+    physical.forEach(d => { devByIp[d.ip] = d; });
+    const dbEl = document.getElementById('discovered-bulbs');
+    // Skip rebuilding while the user is mid-edit in a label input
+    // or while an Identify button is focused — otherwise the
+    // 5-second poll would clobber their input on every tick.
+    const active = document.activeElement;
+    const editing = active && dbEl.contains(active) &&
+                    (active.classList.contains('discovered-label-input') ||
+                     active.classList.contains('btn-identify'));
+    if (!editing) {
+      if (bulbs.length === 0) {
+        dbEl.innerHTML =
+          '<div class="device-idle" style="padding:8px 0;">No devices discovered yet</div>';
+      } else {
+        dbEl.innerHTML = bulbs.map(b => {
+          const dev = devByIp[b.ip];
+          const label = (dev && dev.label) || b.label || '';
+          const product = (dev && dev.product) || '';
+          const zones = (dev && dev.zones) || 1;
+          const isMatrix = dev && dev.is_matrix;
+          const zoneMeta = isMatrix
+            ? (dev.width + '\u00d7' + dev.height + ' matrix')
+            : (zones + ' zone' + (zones !== 1 ? 's' : ''));
+          const meta = product ? product + ' \u00b7 ' + zoneMeta : '';
+          // data-original holds the label as it was when the row
+          // was rendered; labelKeydown reverts to this on Escape
+          // and saveLabel compares against it to skip no-op saves.
+          return `
+            <div class="discovered-row" data-mac="${esc(b.mac)}" data-ip="${esc(b.ip)}">
+              <div class="discovered-main">
+                <span class="discovered-ip">${esc(b.ip)}</span>
+                <input type="text"
+                       class="discovered-label-input"
+                       value="${esc(label)}"
+                       data-original="${esc(label)}"
+                       placeholder="(unlabeled — click to name)"
+                       maxlength="64"
+                       onkeydown="labelKeydown(this, event)"
+                       onblur="labelBlur(this)">
+                <button class="btn-identify" onclick="identifyBulb(this)">Identify</button>
+              </div>
+              <span class="discovered-mac">${esc(meta)}</span>
+            </div>
+          `;
+        }).join('');
+      }
+    }
+
+    document.getElementById('last-update').textContent =
+      new Date().toLocaleTimeString();
+  } catch (e) {
+    console.error('Refresh failed:', e);
+  } finally {
+    refreshInFlight = false;
+  }
+}
+
+// Escape HTML to prevent XSS from device labels or effect names.
+function esc(s) {
+  if (s == null) return '';
+  const d = document.createElement('div');
+  d.textContent = String(s);
+  return d.innerHTML;
+}
+
+// ---- Discovered-bulbs inline labeling + identify ----
+
+// Byte length helper — the registry enforces a 32-byte UTF-8
+// cap matching the LIFX firmware SetLabel limit.  Counting bytes
+// (not chars) matters for multi-byte labels like emoji or accented
+// characters.
+function labelByteLength(s) {
+  return new Blob([s]).size;
+}
+
+// Max label bytes — matches MAX_LABEL_BYTES in device_registry.py.
+const LABEL_MAX_BYTES = 32;
+
+// Show or clear the inline error underneath a discovered row.
+// Creates the error slot lazily so rows without errors stay tidy.
+function showRowError(rowEl, msg) {
+  let slot = rowEl.querySelector('.discovered-error');
+  if (!msg) {
+    if (slot) slot.remove();
+    return;
+  }
+  if (!slot) {
+    slot = document.createElement('div');
+    slot.className = 'discovered-error';
+    rowEl.appendChild(slot);
+  }
+  slot.textContent = msg;
+}
+
+// Identify a bulb — pulses its brightness so the user can locate
+// the physical device.  Uses the existing
+// POST /api/devices/{ip}/identify endpoint.  The button briefly
+// turns green to confirm the request was dispatched; the bulb
+// itself keeps pulsing on the server side for a few seconds.
+async function identifyBulb(btn) {
+  const row = btn.closest('.discovered-row');
+  if (!row) return;
+  const ip = row.dataset.ip;
+  if (!ip) return;
+  showRowError(row, '');
+  btn.disabled = true;
+  btn.classList.add('active');
+  btn.textContent = 'Flashing\u2026';
+  try {
+    const resp = await fetch(BASE + '/api/devices/' +
+                             encodeURIComponent(ip) + '/identify', {
+      method: 'POST',
+      headers: { 'Authorization': 'Bearer ' + TOKEN },
+    });
+    if (!resp.ok) {
+      const err = await resp.json().catch(() => ({}));
+      showRowError(row, 'Identify failed: ' +
+                   (err.error || ('HTTP ' + resp.status)));
+    }
+  } catch (e) {
+    showRowError(row, 'Identify request failed.');
+  } finally {
+    // Reset the button after a short delay so the user sees the
+    // acknowledgement even if the request returns instantly.
+    setTimeout(() => {
+      btn.disabled = false;
+      btn.classList.remove('active');
+      btn.textContent = 'Identify';
+    }, 1500);
+  }
+}
+
+// Keyboard handler for the per-row label input.  Enter commits,
+// Escape reverts to the original value and drops focus.
+function labelKeydown(input, ev) {
+  if (ev.key === 'Enter') {
+    ev.preventDefault();
+    input.blur();  // blur triggers labelBlur → saveLabel.
+  } else if (ev.key === 'Escape') {
+    ev.preventDefault();
+    input.value = input.dataset.original || '';
+    const row = input.closest('.discovered-row');
+    if (row) showRowError(row, '');
+    input.blur();
+  }
+}
+
+// Blur handler — only commits if the value actually changed,
+// to avoid spamming the registry on accidental focus changes.
+function labelBlur(input) {
+  const current = input.value.trim();
+  const original = (input.dataset.original || '').trim();
+  if (current === original) return;
+  saveLabel(input, current);
+}
+
+// Commit a label change to the device registry.  Writes via
+// POST /api/registry/device — the server also writes SetLabel to
+// the bulb firmware if the device is online, so the main device
+// list picks up the new name on the next poll.
+async function saveLabel(input, newLabel) {
+  const row = input.closest('.discovered-row');
+  if (!row) return;
+  const mac = row.dataset.mac;
+  if (!mac) {
+    showRowError(row, 'Cannot save — no MAC for this device.');
+    return;
+  }
+
+  // Client-side validation — match the registry rules so common
+  // mistakes get caught without a round-trip.  The server is still
+  // the final authority.
+  if (newLabel.length === 0) {
+    showRowError(row, 'Label cannot be empty.');
+    input.value = input.dataset.original || '';
+    return;
+  }
+  const bytes = labelByteLength(newLabel);
+  if (bytes > LABEL_MAX_BYTES) {
+    showRowError(row, 'Label is ' + bytes + ' bytes (max ' +
+                 LABEL_MAX_BYTES + ').');
+    return;
+  }
+
+  showRowError(row, '');
+  input.disabled = true;
+
+  try {
+    const resp = await fetch(BASE + '/api/registry/device', {
+      method: 'POST',
+      headers: {
+        'Authorization': 'Bearer ' + TOKEN,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ mac: mac, label: newLabel }),
+    });
+    if (!resp.ok) {
+      const err = await resp.json().catch(() => ({}));
+      // 400 is returned for collisions (label already in use by
+      // another MAC) and for validation errors.  Show the server
+      // message as-is since it includes the colliding MAC.
+      showRowError(row, err.error || ('Save failed (HTTP ' +
+                   resp.status + ')'));
+      // Revert so the displayed value reflects what's actually
+      // stored — the user sees the failure and their typed value
+      // is kept in place only until the next poll.
+      input.value = input.dataset.original || '';
+      return;
+    }
+    const result = await resp.json();
+    // Commit succeeded — update the in-memory original so a
+    // subsequent blur doesn't re-save the same value.
+    input.dataset.original = result.label || newLabel;
+  } catch (e) {
+    showRowError(row, 'Save request failed.');
+    input.value = input.dataset.original || '';
+  } finally {
+    input.disabled = false;
+  }
+}
+
+// ---- Power toggle for devices and groups ----
+
+async function rediscover() {
+  const btn = document.querySelector('button[onclick="rediscover()"]');
+  const origText = btn ? btn.textContent : '';
+  if (btn) { btn.textContent = 'Scanning\u2026'; btn.disabled = true; }
+  try {
+    const resp = await fetch(BASE + '/api/server/rediscover', {
+      method: 'POST',
+      headers: { 'Authorization': 'Bearer ' + TOKEN },
+    });
+    if (!resp.ok) {
+      const err = await resp.json().catch(() => ({}));
+      alert('Rediscover failed: ' + (err.error || resp.status));
+      return;
+    }
+    const result = await resp.json();
+    await refresh();
+    const n = result.devices || 0;
+    const u = result.unresolved || 0;
+    let msg = n + ' device' + (n !== 1 ? 's' : '') + ' loaded.';
+    if (u > 0) {
+      msg += ' ' + u + ' unresolved.';
+    }
+    alert(msg);
+  } catch (e) {
+    alert('Rediscover request failed.');
+  } finally {
+    if (btn) { btn.textContent = origText; btn.disabled = false; }
+  }
+}
+
+async function matterToggle(name) {
+  // Optimistic UI — flip the button immediately.
+  const btns = document.querySelectorAll('.btn-power');
+  btns.forEach(b => {
+    if (b.onclick && b.onclick.toString().includes(name)) {
+      const wasOn = b.classList.contains('is-on');
+      b.classList.toggle('is-on', !wasOn);
+      b.classList.toggle('is-off', wasOn);
+      b.textContent = wasOn ? 'OFF' : 'ON';
+    }
+  });
+  try {
+    const resp = await fetch(BASE + '/api/matter/' + encodeURIComponent(name) + '/power', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer ' + TOKEN,
+      },
+      body: JSON.stringify({ action: 'toggle' }),
+    });
+    if (!resp.ok) {
+      const err = await resp.json().catch(() => ({}));
+      console.error('Matter toggle failed:', err.error || resp.status);
+    }
+  } catch (e) {
+    console.error('Matter toggle request failed:', e);
+  }
+}
+
+async function togglePower(deviceId, currentlyOn) {
+  try {
+    const resp = await fetch(BASE + '/api/devices/' + encodeURIComponent(deviceId) + '/power', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer ' + TOKEN,
+      },
+      body: JSON.stringify({ on: !currentlyOn }),
+    });
+    if (!resp.ok) {
+      const err = await resp.json().catch(() => ({}));
+      console.error('Power toggle failed:', err.error || resp.status);
+      return;
+    }
+    refresh();
+  } catch (e) {
+    console.error('Power toggle request failed:', e);
+  }
+}
+
+// ---- Reintrospect (re-query zone count) ----
+
+async function reintrospect(deviceId) {
+  const btn = event && event.target;
+  const origText = btn ? btn.textContent : '';
+  if (btn) { btn.textContent = 'Counting\u2026'; btn.disabled = true; }
+  try {
+    const resp = await fetch(BASE + '/api/devices/' + encodeURIComponent(deviceId) + '/reintrospect', {
+      method: 'POST',
+      headers: { 'Authorization': 'Bearer ' + TOKEN },
+    });
+    if (!resp.ok) {
+      const err = await resp.json().catch(() => ({}));
+      alert('Recount failed: ' + (err.error || resp.status));
+      return;
+    }
+    await refresh();
+    alert('Done.');
+  } catch (e) {
+    alert('Recount request failed.');
+  } finally {
+    if (btn) { btn.textContent = origText; btn.disabled = false; }
+  }
+}
+
+// ---- Schedule enable/disable toggle ----
+
+async function toggleScheduleEnabled(index, enabled) {
+  try {
+    const resp = await fetch(BASE + '/api/schedule/' + index + '/enabled', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer ' + TOKEN,
+      },
+      body: JSON.stringify({ enabled: enabled }),
+    });
+    if (!resp.ok) {
+      const err = await resp.json().catch(() => ({}));
+      console.error('Toggle failed:', err.error || resp.status);
+      return;
+    }
+    refresh();
+  } catch (e) {
+    console.error('Toggle request failed:', e);
+  }
+}
+
+// ---- Schedule deletion with inline confirmation ----
+
+// Show an inline confirmation strip replacing the schedule row content.
+function confirmDeleteSchedule(btn, index, name) {
+  const row = btn.closest('.schedule-row');
+  // Stash original HTML so Cancel can restore it.
+  row._originalHTML = row.innerHTML;
+  row.innerHTML = `
+    <div class="schedule-confirm-delete">
+      <span class="confirm-msg">Delete <strong>${esc(name)}</strong>?</span>
+      <div class="confirm-buttons">
+        <button class="btn-confirm-cancel" onclick="cancelDeleteSchedule(this)">Cancel</button>
+        <button class="btn-confirm-delete" onclick="executeDeleteSchedule(${index})">Delete</button>
+      </div>
+    </div>
+  `;
+}
+
+// Restore the original row content on cancel.
+function cancelDeleteSchedule(btn) {
+  const row = btn.closest('.schedule-row');
+  if (row._originalHTML) {
+    row.innerHTML = row._originalHTML;
+    delete row._originalHTML;
+  }
+}
+
+// Execute the delete API call and refresh.
+async function executeDeleteSchedule(index) {
+  try {
+    const resp = await fetch(BASE + '/api/schedule/' + index, {
+      method: 'DELETE',
+      headers: { 'Authorization': 'Bearer ' + TOKEN },
+    });
+    if (!resp.ok) {
+      const err = await resp.json().catch(() => ({}));
+      console.error('Delete failed:', err.error || resp.status);
+      return;
+    }
+    refresh();
+  } catch (e) {
+    console.error('Delete request failed:', e);
+  }
+}
+
+// ---- Group modal (create + edit) and deletion ----
+
+// Tracks whether the group modal is in create or edit mode.
+let _groupModalIsCreate = true;
+
+// All available devices — populated on modal open, reused by render.
+let _groupAllDevices = [];
+// Ordered list of selected device IPs — order = group member order.
+let _groupSelectedIps = [];
+
+// Fetch devices and build the master list; then render.
+async function _populateGroupDeviceList(selectedIps) {
+  const listEl = document.getElementById('group-device-list');
+  listEl.innerHTML = '<span style="color:var(--dim)">Loading devices...</span>';
+
+  try {
+    const [devData, discData, matterData] = await Promise.all([
+      api('/api/devices'),
+      api('/api/discovered_bulbs'),
+      api('/api/matter/devices'),
+    ]);
+    const devices = ((devData && devData.devices) || []).filter(d => !d.is_group);
+    const bulbs = (discData && discData.discovered_bulbs) || [];
+    const matterDevs = (matterData && matterData.devices) || [];
+
+    const devByIp = {};
+    devices.forEach(d => { devByIp[d.ip] = d; });
+
+    _groupAllDevices = [];
+    devices.forEach(d => {
+      _groupAllDevices.push({
+        ip: d.ip,
+        name: d.nickname || d.label || d.ip,
+        meta: (d.product || '') + (d.zones > 1 ? ' \u00b7 ' + d.zones + ' zones' : ''),
+      });
+    });
+    bulbs.forEach(b => {
+      if (!devByIp[b.ip]) {
+        _groupAllDevices.push({
+          ip: b.ip,
+          name: b.mac || b.ip,
+          meta: 'Discovered (not configured)',
+        });
+      }
+    });
+    // Matter devices — use "matter:Name" as the identifier.
+    matterDevs.forEach(md => {
+      const matterId = 'matter:' + md.name;
+      _groupAllDevices.push({
+        ip: matterId,
+        name: 'matter: ' + md.name,
+        meta: 'Matter switch \u00b7 node ' + md.node_id,
+      });
+    });
+
+    // Preserve the order from selectedIps (group member order).
+    const selSet = new Set(selectedIps || []);
+    _groupSelectedIps = (selectedIps || []).filter(ip => ip);
+    // Add any selected IPs not in our device list (offline members).
+    _groupSelectedIps.forEach(ip => {
+      if (!_groupAllDevices.find(d => d.ip === ip)) {
+        _groupAllDevices.push({ ip: ip, name: ip, meta: 'Offline / not discovered' });
+      }
+    });
+
+    _renderGroupDeviceList();
+  } catch (e) {
+    listEl.innerHTML = '<span style="color:var(--accent)">Failed to load devices</span>';
+    console.error('Failed to load devices for group modal:', e);
+  }
+}
+
+// Render the two-section device list: Members (ordered) + Available.
+function _renderGroupDeviceList() {
+  const listEl = document.getElementById('group-device-list');
+  const devByIp = {};
+  _groupAllDevices.forEach(d => { devByIp[d.ip] = d; });
+  const selSet = new Set(_groupSelectedIps);
+
+  let html = '';
+
+  // Members section — ordered, with reorder arrows.
+  if (_groupSelectedIps.length > 0) {
+    html += '<div class="section-label">Members (drag order = zone order)</div>';
+    _groupSelectedIps.forEach((ip, idx) => {
+      const d = devByIp[ip] || { ip: ip, name: ip, meta: '' };
+      html += `
+        <div class="group-device-item">
+          <input type="checkbox" value="${esc(d.ip)}" checked
+                 onchange="_groupToggleDevice('${esc(d.ip)}', false)">
+          <div class="group-device-label">
+            <span class="dev-name">${esc(d.name)}</span>
+            <span class="dev-meta">${esc(d.ip)}${d.meta ? ' \u00b7 ' + esc(d.meta) : ''}</span>
+          </div>
+          <div class="group-reorder">
+            <button onclick="_groupMoveDevice(${idx}, -1)" ${idx === 0 ? 'disabled' : ''}>&uarr;</button>
+            <button onclick="_groupMoveDevice(${idx}, 1)" ${idx === _groupSelectedIps.length - 1 ? 'disabled' : ''}>&darr;</button>
+          </div>
+        </div>`;
+    });
+  }
+
+  // Available section — unchecked devices.
+  const available = _groupAllDevices.filter(d => !selSet.has(d.ip));
+  if (available.length > 0) {
+    html += '<div class="section-label">Available</div>';
+    available.forEach(d => {
+      html += `
+        <div class="group-device-item">
+          <input type="checkbox" value="${esc(d.ip)}"
+                 onchange="_groupToggleDevice('${esc(d.ip)}', true)">
+          <div class="group-device-label">
+            <span class="dev-name">${esc(d.name)}</span>
+            <span class="dev-meta">${esc(d.ip)}${d.meta ? ' \u00b7 ' + esc(d.meta) : ''}</span>
+          </div>
+          <div></div>
+        </div>`;
+    });
+  }
+
+  if (!html) {
+    html = '<span style="color:var(--dim)">No devices available</span>';
+  }
+  listEl.innerHTML = html;
+}
+
+// Toggle a device in/out of the selected list and re-render.
+function _groupToggleDevice(ip, adding) {
+  if (adding) {
+    if (!_groupSelectedIps.includes(ip)) _groupSelectedIps.push(ip);
+  } else {
+    _groupSelectedIps = _groupSelectedIps.filter(x => x !== ip);
+  }
+  _renderGroupDeviceList();
+}
+
+// Move a selected device up or down and re-render.
+function _groupMoveDevice(idx, direction) {
+  const newIdx = idx + direction;
+  if (newIdx < 0 || newIdx >= _groupSelectedIps.length) return;
+  const temp = _groupSelectedIps[idx];
+  _groupSelectedIps[idx] = _groupSelectedIps[newIdx];
+  _groupSelectedIps[newIdx] = temp;
+  _renderGroupDeviceList();
+}
+
+async function openNewGroupModal() {
+  _groupModalIsCreate = true;
+  document.getElementById('group-modal-title').textContent = 'New Group';
+  document.getElementById('group-original-name').value = '';
+  document.getElementById('group-name').value = '';
+  document.getElementById('group-error').style.display = 'none';
+  document.getElementById('group-modal').classList.add('active');
+  await _populateGroupDeviceList([]);
+}
+
+async function openEditGroupModal(name, memberIps) {
+  _groupModalIsCreate = false;
+  document.getElementById('group-modal-title').textContent = 'Edit Group';
+  document.getElementById('group-original-name').value = name;
+  document.getElementById('group-name').value = name;
+  document.getElementById('group-error').style.display = 'none';
+  document.getElementById('group-modal').classList.add('active');
+  await _populateGroupDeviceList(memberIps);
+}
+
+function closeGroupModal() {
+  document.getElementById('group-modal').classList.remove('active');
+}
+
+async function saveGroup() {
+  const errEl = document.getElementById('group-error');
+  errEl.style.display = 'none';
+
+  const name = document.getElementById('group-name').value.trim();
+  const originalName = document.getElementById('group-original-name').value;
+  // Use the ordered selection list — order = zone order in group.
+  const checked = _groupSelectedIps.slice();
+
+  // Client-side validation.
+  const errors = [];
+  if (!name) errors.push('Group name is required');
+  if (name.startsWith('_')) errors.push("Group name must not start with '_'");
+  if (checked.length === 0) errors.push('Select at least one device');
+
+  if (errors.length) {
+    errEl.textContent = errors.join('; ');
+    errEl.style.display = 'block';
+    return;
+  }
+
+  try {
+    const url = _groupModalIsCreate
+      ? BASE + '/api/groups'
+      : BASE + '/api/groups/' + encodeURIComponent(originalName);
+    const method = _groupModalIsCreate ? 'POST' : 'PUT';
+    const resp = await fetch(url, {
+      method: method,
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer ' + TOKEN,
+      },
+      body: JSON.stringify({ name: name, members: checked }),
+    });
+    const data = await resp.json().catch(() => ({}));
+    if (!resp.ok) {
+      errEl.textContent = data.error || ('Error ' + resp.status);
+      errEl.style.display = 'block';
+      return;
+    }
+    closeGroupModal();
+    refresh();
+  } catch (e) {
+    errEl.textContent = 'Request failed';
+    errEl.style.display = 'block';
+    console.error('Group save failed:', e);
+  }
+}
+
+// Inline delete confirmation for groups — same pattern as schedule.
+function confirmDeleteGroup(btn, name) {
+  const row = btn.closest('.group-row');
+  row._originalHTML = row.innerHTML;
+  row.innerHTML = `
+    <div class="schedule-confirm-delete">
+      <span class="confirm-msg">Delete <strong>${esc(name)}</strong>?</span>
+      <div class="confirm-buttons">
+        <button class="btn-confirm-cancel" onclick="cancelDeleteGroup(this)">Cancel</button>
+        <button class="btn-confirm-delete" onclick="executeDeleteGroup('${name.replace(/'/g, "\\'")}')">Delete</button>
+      </div>
+    </div>
+  `;
+}
+
+function cancelDeleteGroup(btn) {
+  const row = btn.closest('.group-row');
+  if (row._originalHTML) {
+    row.innerHTML = row._originalHTML;
+    delete row._originalHTML;
+  }
+}
+
+async function executeDeleteGroup(name) {
+  try {
+    const resp = await fetch(BASE + '/api/groups/' + encodeURIComponent(name), {
+      method: 'DELETE',
+      headers: { 'Authorization': 'Bearer ' + TOKEN },
+    });
+    if (!resp.ok) {
+      const err = await resp.json().catch(() => ({}));
+      console.error('Delete group failed:', err.error || resp.status);
+      return;
+    }
+    refresh();
+  } catch (e) {
+    console.error('Delete group request failed:', e);
+  }
+}
+
+// ---- Schedule modal (create + edit) ----
+
+// Cache of groups and effects for dropdowns.
+let _cachedGroups = [];
+let _cachedEffects = [];
+
+// Tracks whether the modal is in "create" or "edit" mode.
+let _schedModalIsCreate = false;
+
+async function _loadDropdownCaches() {
+  // Fetch groups and effects for dropdowns if not already cached.
+  try {
+    if (_cachedGroups.length === 0) {
+      const grpData = await api('/api/groups');
+      const groups = (grpData && grpData.groups) || {};
+      _cachedGroups = Object.keys(groups).filter(g => !g.startsWith('_')).sort();
+    }
+    if (_cachedEffects.length === 0) {
+      const effData = await api('/api/effects');
+      if (effData && effData.effects) {
+        _cachedEffects = Object.entries(effData.effects)
+          .filter(([n, info]) => !n.startsWith('_') && !((info.params || {}).source))
+          .map(([n]) => n)
+          .sort();
+      }
+    }
+  } catch (e) {
+    console.error('Failed to load groups/effects:', e);
+  }
+}
+
+function _populateDropdowns(selectedGroup, selectedEffect) {
+  const gSel = document.getElementById('sched-group');
+  gSel.innerHTML = _cachedGroups.map(g =>
+    `<option value="${esc(g)}" ${g === selectedGroup ? 'selected' : ''}>${esc(g)}</option>`
+  ).join('');
+  // Add current group if not in list (schedule-specific group).
+  if (selectedGroup && !_cachedGroups.includes(selectedGroup)) {
+    gSel.innerHTML = `<option value="${esc(selectedGroup)}" selected>${esc(selectedGroup)}</option>` + gSel.innerHTML;
+  }
+
+  const eSel = document.getElementById('sched-effect');
+  eSel.innerHTML = _cachedEffects.map(e =>
+    `<option value="${esc(e)}" ${e === selectedEffect ? 'selected' : ''}>${esc(e)}</option>`
+  ).join('');
+}
+
+async function openNewScheduleModal() {
+  _schedModalIsCreate = true;
+  const modal = document.getElementById('sched-modal');
+  const errEl = document.getElementById('sched-error');
+  errEl.style.display = 'none';
+  errEl.textContent = '';
+
+  document.getElementById('sched-modal-title').textContent = 'New Schedule Entry';
+  document.getElementById('sched-idx').value = '';
+  document.getElementById('sched-name').value = '';
+  document.getElementById('sched-start').value = '';
+  document.getElementById('sched-stop').value = '';
+  document.getElementById('sched-days').value = '';
+  document.getElementById('sched-params').value = '';
+
+  await _loadDropdownCaches();
+  _populateDropdowns('', '');
+
+  stopPolling();
+  modal.classList.add('active');
+}
+
+async function openScheduleModal(entry) {
+  _schedModalIsCreate = false;
+  const modal = document.getElementById('sched-modal');
+  const errEl = document.getElementById('sched-error');
+  errEl.style.display = 'none';
+  errEl.textContent = '';
+
+  document.getElementById('sched-modal-title').textContent = 'Edit Schedule Entry';
+  document.getElementById('sched-idx').value = entry.index;
+  document.getElementById('sched-name').value = entry.name || '';
+  document.getElementById('sched-start').value = entry.start || '';
+  document.getElementById('sched-stop').value = entry.stop || '';
+  document.getElementById('sched-days').value = entry.days || '';
+  document.getElementById('sched-params').value =
+    (entry.params && Object.keys(entry.params).length)
+      ? JSON.stringify(entry.params) : '';
+
+  await _loadDropdownCaches();
+  _populateDropdowns(entry.group || '', entry.effect || '');
+
+  stopPolling();
+  modal.classList.add('active');
+}
+
+function closeScheduleModal() {
+  document.getElementById('sched-modal').classList.remove('active');
+  startPolling();
+}
+
+async function saveScheduleEntry() {
+  const errEl = document.getElementById('sched-error');
+  errEl.style.display = 'none';
+
+  const idx = parseInt(document.getElementById('sched-idx').value, 10);
+  const name = document.getElementById('sched-name').value.trim();
+  const group = document.getElementById('sched-group').value;
+  const effect = document.getElementById('sched-effect').value;
+  const start = document.getElementById('sched-start').value.trim();
+  const stop = document.getElementById('sched-stop').value.trim();
+  const days = document.getElementById('sched-days').value.trim();
+  const paramsRaw = document.getElementById('sched-params').value.trim();
+
+  // Client-side validation.
+  const errs = [];
+  if (!name) errs.push('Name is required');
+  if (!group) errs.push('Group is required');
+  if (!effect) errs.push('Effect is required');
+  if (!start) errs.push('Start time is required');
+  if (!stop) errs.push('Stop time is required');
+
+  // Validate time format client-side.
+  const timeRe = /^(\d{1,2}:\d{2}|(sunrise|sunset|dawn|dusk|noon|midnight)([+-](\d+h)?(\d+m)?)?)$/;
+  if (start && !timeRe.test(start)) errs.push('Invalid start time format');
+  if (stop && !timeRe.test(stop)) errs.push('Invalid stop time format');
+
+  // Validate days — must be comma-separated 3-letter day abbreviations.
+  if (days) {
+    const validDays = ['mon','tue','wed','thu','fri','sat','sun'];
+    const parts = days.split(',').map(d => d.trim().toLowerCase());
+    const bad = parts.filter(d => !validDays.includes(d));
+    if (bad.length) errs.push('Invalid day(s): ' + bad.join(', '));
+  }
+
+  // Validate params JSON.
+  let params = {};
+  if (paramsRaw) {
+    try {
+      params = JSON.parse(paramsRaw);
+      if (typeof params !== 'object' || Array.isArray(params)) {
+        errs.push('Params must be a JSON object {}');
+      }
+    } catch (e) {
+      errs.push('Invalid JSON in params: ' + e.message);
+    }
+  }
+
+  if (errs.length) {
+    errEl.textContent = errs.join('. ');
+    errEl.style.display = 'block';
+    return;
+  }
+
+  // Send to server — POST for create, PUT for edit.
+  const isCreate = _schedModalIsCreate;
+  const url = isCreate
+    ? BASE + '/api/schedule'
+    : BASE + '/api/schedule/' + idx;
+  const method = isCreate ? 'POST' : 'PUT';
+
+  try {
+    const resp = await fetch(url, {
+      method: method,
+      headers: {
+        'Authorization': 'Bearer ' + TOKEN,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ name, group, effect, start, stop, days, params }),
+    });
+    const data = await resp.json();
+    if (!resp.ok) {
+      errEl.textContent = data.error || 'Server error';
+      errEl.style.display = 'block';
+      return;
+    }
+    closeScheduleModal();
+    refresh();
+  } catch (e) {
+    errEl.textContent = 'Network error: ' + e.message;
+    errEl.style.display = 'block';
+  }
+}
+
+// Close modal on Escape key.
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') { closeScheduleModal(); closeAutomationModal(); }
+});
+
+// ---- Automation modal (create + edit) ----
+
+let _autoModalIsCreate = false;
+
+function toggleAutoOffFields() {
+  const offType = document.getElementById('auto-off-type').value;
+  document.getElementById('auto-off-minutes').style.display = offType === 'watchdog' ? '' : 'none';
+  document.getElementById('auto-off-condition-row').style.display = offType === 'condition' ? '' : 'none';
+}
+
+async function openNewAutomationModal() {
+  await _loadDropdownCaches();
+  _autoModalIsCreate = true;
+  document.getElementById('auto-modal-title').textContent = 'New Automation';
+  document.getElementById('auto-idx').value = '-1';
+  document.getElementById('auto-name').value = '';
+  document.getElementById('auto-sensor-label').value = '';
+  document.getElementById('auto-characteristic').value = 'motion';
+  document.getElementById('auto-trigger-cond').value = 'eq';
+  document.getElementById('auto-trigger-val').value = '1';
+  _populateSelect('auto-group', _cachedGroups);
+  _populateSelect('auto-effect', _cachedEffects);
+  _populateSelect('auto-off-effect', _cachedEffects, 'off');
+  document.getElementById('auto-params').value = '{"brightness": 70}';
+  document.getElementById('auto-off-type').value = 'watchdog';
+  document.getElementById('auto-off-minutes').value = '30';
+  document.getElementById('auto-conflict').value = 'defer';
+  toggleAutoOffFields();
+  document.getElementById('auto-error').style.display = 'none';
+  document.getElementById('auto-modal').classList.add('active');
+  stopPolling();
+}
+
+async function openAutomationModal(entry) {
+  await _loadDropdownCaches();
+  _autoModalIsCreate = false;
+  document.getElementById('auto-modal-title').textContent = 'Edit Automation';
+  document.getElementById('auto-idx').value = entry.index;
+  document.getElementById('auto-name').value = entry.name || '';
+  document.getElementById('auto-sensor-label').value = (entry.sensor && entry.sensor.label) || '';
+  document.getElementById('auto-characteristic').value = (entry.sensor && entry.sensor.characteristic) || 'motion';
+  document.getElementById('auto-trigger-cond').value = (entry.trigger && entry.trigger.condition) || 'eq';
+  document.getElementById('auto-trigger-val').value = (entry.trigger && entry.trigger.value) || '';
+  _populateSelect('auto-group', _cachedGroups, (entry.action && entry.action.group) || '');
+  _populateSelect('auto-effect', _cachedEffects, (entry.action && entry.action.effect) || 'on');
+  _populateSelect('auto-off-effect', _cachedEffects, (entry.off_action && entry.off_action.effect) || 'off');
+  document.getElementById('auto-params').value = (entry.action && entry.action.params) ? JSON.stringify(entry.action.params) : '';
+  document.getElementById('auto-off-type').value = (entry.off_trigger && entry.off_trigger.type) || 'watchdog';
+  document.getElementById('auto-off-minutes').value = (entry.off_trigger && entry.off_trigger.minutes) || '30';
+  document.getElementById('auto-off-cond').value = (entry.off_trigger && entry.off_trigger.condition) || 'eq';
+  document.getElementById('auto-off-val').value = (entry.off_trigger && entry.off_trigger.value) || '';
+  document.getElementById('auto-conflict').value = entry.schedule_conflict || 'defer';
+  toggleAutoOffFields();
+  document.getElementById('auto-error').style.display = 'none';
+  document.getElementById('auto-modal').classList.add('active');
+  stopPolling();
+}
+
+function _populateSelect(id, options, selected) {
+  const sel = document.getElementById(id);
+  sel.innerHTML = options.map(o =>
+    `<option value="${esc(o)}" ${o === selected ? 'selected' : ''}>${esc(o)}</option>`
+  ).join('');
+}
+
+function closeAutomationModal() {
+  document.getElementById('auto-modal').classList.remove('active');
+  startPolling(POLL_INTERVAL_MS);
+}
+
+async function saveAutomation() {
+  const errEl = document.getElementById('auto-error');
+  errEl.style.display = 'none';
+
+  const idx = parseInt(document.getElementById('auto-idx').value, 10);
+  const name = document.getElementById('auto-name').value.trim();
+  const sensorLabel = document.getElementById('auto-sensor-label').value.trim();
+  const characteristic = document.getElementById('auto-characteristic').value;
+  const trigCond = document.getElementById('auto-trigger-cond').value;
+  const trigVal = parseFloat(document.getElementById('auto-trigger-val').value);
+  const group = document.getElementById('auto-group').value;
+  const effect = document.getElementById('auto-effect').value;
+  const paramsRaw = document.getElementById('auto-params').value.trim();
+  const offType = document.getElementById('auto-off-type').value;
+  const offMinutes = parseFloat(document.getElementById('auto-off-minutes').value);
+  const offEffect = document.getElementById('auto-off-effect').value;
+  const conflict = document.getElementById('auto-conflict').value;
+
+  const errs = [];
+  if (!name) errs.push('Name is required');
+  if (!sensorLabel) errs.push('Sensor label is required');
+  if (!group) errs.push('Group is required');
+  if (!effect) errs.push('Effect is required');
+  if (isNaN(trigVal)) errs.push('Trigger value must be a number');
+
+  let params = {};
+  if (paramsRaw) {
+    try {
+      params = JSON.parse(paramsRaw);
+      if (typeof params !== 'object' || Array.isArray(params)) errs.push('Params must be a JSON object');
+    } catch (e) { errs.push('Invalid JSON: ' + e.message); }
+  }
+
+  if (errs.length) {
+    errEl.textContent = errs.join('. ');
+    errEl.style.display = 'block';
+    return;
+  }
+
+  const body = {
+    name,
+    sensor: { type: 'matter', label: sensorLabel, characteristic },
+    trigger: { condition: trigCond, value: Number.isInteger(trigVal) ? trigVal : trigVal },
+    action: { group, effect, params },
+    off_trigger: offType === 'watchdog'
+      ? { type: 'watchdog', minutes: offMinutes }
+      : { type: 'condition', condition: document.getElementById('auto-off-cond').value,
+          value: parseFloat(document.getElementById('auto-off-val').value) },
+    off_action: { effect: offEffect, params: {} },
+    schedule_conflict: conflict,
+  };
+
+  const isCreate = _autoModalIsCreate;
+  const url = isCreate ? BASE + '/api/automations' : BASE + '/api/automations/' + idx;
+  const method = isCreate ? 'POST' : 'PUT';
+
+  try {
+    const resp = await fetch(url, {
+      method, headers: { 'Authorization': 'Bearer ' + TOKEN, 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+    const data = await resp.json();
+    if (!resp.ok) { errEl.textContent = data.error || 'Server error'; errEl.style.display = 'block'; return; }
+    closeAutomationModal();
+    refresh();
+  } catch (e) { errEl.textContent = 'Network error: ' + e.message; errEl.style.display = 'block'; }
+}
+
+async function toggleAutomationEnabled(index, enabled) {
+  try {
+    await fetch(BASE + '/api/automations/' + index + '/enabled', {
+      method: 'POST',
+      headers: { 'Authorization': 'Bearer ' + TOKEN, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ enabled }),
+    });
+    refresh();
+  } catch (e) { console.error('Toggle automation failed:', e); }
+}
+
+function confirmDeleteAutomation(btn, index, name) {
+  const row = btn.closest('.schedule-row');
+  row._originalHTML = row.innerHTML;
+  row.innerHTML = `
+    <div class="schedule-confirm-delete">
+      <span class="confirm-msg">Delete <strong>${esc(name)}</strong>?</span>
+      <div class="confirm-buttons">
+        <button class="btn-confirm-cancel" onclick="cancelDeleteAutomation(this)">Cancel</button>
+        <button class="btn-confirm-delete" onclick="executeDeleteAutomation(${index})">Delete</button>
+      </div>
+    </div>`;
+}
+
+function cancelDeleteAutomation(btn) {
+  const row = btn.closest('.schedule-row');
+  if (row._originalHTML) row.innerHTML = row._originalHTML;
+}
+
+async function executeDeleteAutomation(index) {
+  try {
+    const resp = await fetch(BASE + '/api/automations/' + index, {
+      method: 'DELETE', headers: { 'Authorization': 'Bearer ' + TOKEN },
+    });
+    if (!resp.ok) { console.error('Delete automation failed:', resp.status); return; }
+    refresh();
+  } catch (e) { console.error('Delete automation request failed:', e); }
+}
+</script>
+</body>
+</html>

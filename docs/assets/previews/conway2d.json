@@ -1,0 +1,25 @@
+{
+  "command": "python3 glowup.py record conway2d --grid 8x8 --brightness 80 --hue -1 --mode dissolve --pattern 1 --rate medium",
+  "created": "2026-05-02",
+  "description": "Conway's Game of Life on an 8x8 toroidal grid",
+  "duration": 8.0,
+  "effect": "conway2d",
+  "file": "conway2d.gif",
+  "format": "gif",
+  "fps": 20,
+  "grid": "8x8",
+  "height": 360,
+  "lerp": "lab",
+  "looping": false,
+  "media_url": "assets/previews/conway2d.gif",
+  "params": {
+    "brightness": 80,
+    "hue": -1,
+    "mode": "dissolve",
+    "pattern": 1,
+    "rate": "medium"
+  },
+  "width": 360,
+  "zones": 64,
+  "zpb": 1
+}

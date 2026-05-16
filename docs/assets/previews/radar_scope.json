@@ -1,0 +1,25 @@
+{
+  "command": "python3 glowup.py record radar_scope --grid 8x8 --brightness 80 --hue -1 --rate medium",
+  "created": "2026-05-02",
+  "description": "Old-fashioned radar scope \u2014 rotating line with fading tail",
+  "duration": 6.0,
+  "effect": "radar_scope",
+  "file": "radar_scope.gif",
+  "format": "gif",
+  "fps": 20,
+  "grid": "8x8",
+  "height": 360,
+  "lerp": "lab",
+  "looping": false,
+  "media_url": "assets/previews/radar_scope.gif",
+  "params": {
+    "brightness": 80,
+    "height": 8,
+    "hue": -1,
+    "rate": "medium",
+    "width": 8
+  },
+  "width": 360,
+  "zones": 64,
+  "zpb": 1
+}

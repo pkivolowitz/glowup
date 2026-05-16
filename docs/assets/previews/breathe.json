@@ -1,0 +1,26 @@
+{
+  "command": "python3 glowup.py play breathe --zones 64 --zpb 1 --brightness 100 --hue1 240.0 --hue2 0.0 --kelvin 3500 --sat1 100 --sat2 100 --speed 4.0",
+  "created": "2026-05-02",
+  "description": "All bulbs oscillate between two colors via sine wave",
+  "duration": 4.0,
+  "effect": "breathe",
+  "file": "breathe.gif",
+  "format": "gif",
+  "fps": 20,
+  "height": 80,
+  "lerp": "lab",
+  "looping": false,
+  "media_url": "assets/previews/breathe.gif",
+  "params": {
+    "brightness": 100,
+    "hue1": 240.0,
+    "hue2": 0.0,
+    "kelvin": 3500,
+    "sat1": 100,
+    "sat2": 100,
+    "speed": 4.0
+  },
+  "width": 600,
+  "zones": 64,
+  "zpb": 1
+}

@@ -1,0 +1,28 @@
+{
+  "command": "python3 glowup.py play sonar --zones 108 --zpb 3 --brightness 100 --decay 2.0 --kelvin 6500 --obstacle-brightness 80 --obstacle-hue 15.0 --obstacle-speed 0.5 --pulse-interval 2.0 --speed 8.0",
+  "created": "2026-05-02",
+  "description": "Sonar pulses reflect off drifting obstacles",
+  "duration": 6.0,
+  "effect": "sonar",
+  "file": "sonar.gif",
+  "format": "gif",
+  "fps": 20,
+  "height": 80,
+  "lerp": "lab",
+  "looping": false,
+  "media_url": "assets/previews/sonar.gif",
+  "params": {
+    "brightness": 100,
+    "decay": 2.0,
+    "kelvin": 6500,
+    "obstacle_brightness": 80,
+    "obstacle_hue": 15.0,
+    "obstacle_speed": 0.5,
+    "pulse_interval": 2.0,
+    "speed": 8.0,
+    "zones_per_bulb": 3
+  },
+  "width": 600,
+  "zones": 108,
+  "zpb": 3
+}

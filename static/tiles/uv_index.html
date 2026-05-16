@@ -1,0 +1,110 @@
+<!--
+  UV Index tile — removed from /home on 2026-04-04.
+  Preserved here for anyone who wants it back.
+  Drop the CSS into the <style> block, the HTML into the grid,
+  and the JS into the <script> block of home.html.
+-->
+
+<!-- CSS -->
+<style>
+.uv-card {
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+}
+.uv-value {
+    font-family: var(--font-clock);
+    font-size: clamp(2.5rem, 6vw, 4rem);
+    font-weight: 200;
+    line-height: 1.1;
+}
+.uv-label {
+    font-size: clamp(1rem, 2vw, 1.4rem);
+    font-weight: 600;
+    margin-top: 2px;
+}
+.uv-details {
+    font-size: clamp(0.7rem, 1.2vw, 1rem);
+    color: var(--label-color);
+    margin-top: 6px;
+}
+.uv-low      { color: #4caf50; }
+.uv-moderate { color: #ffeb3b; }
+.uv-high     { color: #ff9800; }
+.uv-veryhigh { color: #f44336; }
+.uv-extreme  { color: #9c27b0; }
+</style>
+
+<!-- HTML -->
+<div class="uv-card sensor-card" id="uvCard" style="display:none">
+    <div class="sensor-location">UV Index</div>
+    <div class="uv-value" id="uvValue"></div>
+    <div class="uv-label" id="uvLabel"></div>
+    <div class="uv-details" id="uvDetails"></div>
+</div>
+
+<!-- JS -->
+<script>
+var uvCard = document.getElementById("uvCard");
+var uvValue = document.getElementById("uvValue");
+var uvLabel = document.getElementById("uvLabel");
+var uvDetails = document.getElementById("uvDetails");
+
+/* Operator coordinates come from window.__GLOWUP_COORDS__, stamped
+   into home.html by handlers/dashboard.py.  Same pattern the live
+   weather/AQI/alerts tiles use; if you paste this snippet back into
+   home.html, GLOWUP_COORDS is already declared there.  When coords
+   are absent the URL is null and pollUv short-circuits, leaving the
+   tile in its initial empty state. */
+var UV_URL = (typeof GLOWUP_COORDS !== "undefined" && GLOWUP_COORDS)
+    ? "https://api.open-meteo.com/v1/forecast" +
+      "?latitude=" + GLOWUP_COORDS.latitude +
+      "&longitude=" + GLOWUP_COORDS.longitude +
+      "&current=uv_index&daily=uv_index_max" +
+      "&temperature_unit=fahrenheit&timezone=America/Chicago&forecast_days=1"
+    : null;
+
+function uvCategory(uv) {
+    if (uv < 3)  return ["Low", "uv-low"];
+    if (uv < 6)  return ["Moderate", "uv-moderate"];
+    if (uv < 8)  return ["High", "uv-high"];
+    if (uv < 11) return ["Very High", "uv-veryhigh"];
+    return ["Extreme", "uv-extreme"];
+}
+
+function pollUv() {
+    if (!UV_URL) return;  /* coords not configured — see GLOWUP_COORDS comment */
+    fetch(UV_URL)
+        .then(function (r) { return r.json(); })
+        .then(function (data) {
+            if (!data.current) return;
+            var uv = data.current.uv_index;
+            var cat = uvCategory(uv);
+            var maxUv = (data.daily && data.daily.uv_index_max)
+                ? data.daily.uv_index_max[0] : null;
+
+            uvValue.textContent = uv.toFixed(1);
+            uvValue.className = "uv-value " + cat[1];
+            uvLabel.textContent = cat[0];
+            uvLabel.className = "uv-label " + cat[1];
+
+            if (maxUv != null) {
+                var maxCat = uvCategory(maxUv);
+                uvDetails.innerHTML = "Today's peak: " +
+                    '<span class="' + maxCat[1] + '">' +
+                    maxUv.toFixed(1) + " (" + maxCat[0] + ")</span>";
+            } else {
+                uvDetails.textContent = "";
+            }
+            uvCard.style.display = "";
+        })
+        .catch(function () {});
+}
+
+if (UV_URL) {
+    pollUv();
+    setInterval(pollUv, WEATHER_POLL_MS);
+}
+</script>

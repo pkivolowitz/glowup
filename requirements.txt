@@ -1,0 +1,21 @@
+# GlowUp — LIFX Effect Engine
+#
+# The core engine uses only the Python standard library. The single
+# optional dependency below is needed only for MQTT integration.
+#
+# External (non-Python) dependencies:
+#
+#   ffmpeg — required by the 'record' subcommand for rendering effects
+#            to GIF, MP4, or WebM. Not needed for normal operation.
+#
+#     macOS:  brew install ffmpeg
+#     Linux:  sudo apt install ffmpeg
+#     Windows: download from https://ffmpeg.org/download.html
+#
+# Linux users who want the --sim live preview need tkinter, which is a
+# system package (not pip-installable):
+#
+#   sudo apt install python3-tk
+
+paho-mqtt>=2.0,<3.0
+psycopg2-binary>=2.9,<3.0

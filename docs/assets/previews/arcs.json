@@ -1,0 +1,24 @@
+{
+  "command": "python3 glowup.py record arcs --grid 8x8 --brightness 80 --rate medium",
+  "created": "2026-05-02",
+  "description": "Three blobs trace curving paths; overlaps blend additively",
+  "duration": 6.0,
+  "effect": "arcs",
+  "file": "arcs.gif",
+  "format": "gif",
+  "fps": 20,
+  "grid": "8x8",
+  "height": 360,
+  "lerp": "lab",
+  "looping": false,
+  "media_url": "assets/previews/arcs.gif",
+  "params": {
+    "brightness": 80,
+    "height": 8,
+    "rate": "medium",
+    "width": 8
+  },
+  "width": 360,
+  "zones": 64,
+  "zpb": 1
+}

@@ -1,0 +1,36 @@
+__pycache__/
+*.pyc
+.claude/
+.mcp.json
+.vscode/
+server.json
+ble_pairing.json
+.DS_Store
+xcuserdata/
+appstore/
+AUDIT_REPORT.md
+state.db
+state.db-wal
+state.db-shm
+deploy/scripts/
+shopping.json
+site-settings/
+venv/
+build/
+
+# Deploy stamp written by glowup-infra/deploy/scripts/deploy.sh on each
+# fleet host after a successful git-based deploy. Untracked so it
+# survives `git reset --hard staging/master`; gitignored so it doesn't
+# show as dirty on dev workstations that ever happen to write one.
+DEPLOYED
+
+# secrets overlay — never commit a populated secrets.json. Per-file
+# guard plus an explicit allowlist for the example template.
+secrets.json
+!secrets.json.example
+
+# AGENTS.md is the session-protocol spec — household-specific (NAS
+# paths, machine names), no LIFX code. It belongs in the private soe
+# repo, which tracks it. Ignored here so it cannot re-enter the
+# public repo if a checkout still has a local copy on disk.
+AGENTS.md

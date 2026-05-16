@@ -1,0 +1,26 @@
+{
+  "command": "python3 glowup.py play rule30 --zones 108 --zpb 3 --bg 0 --brightness 100 --hue 200.0 --kelvin 3500 --rule 30 --seed 0 --speed 8.0",
+  "created": "2026-05-02",
+  "description": "Wolfram 1-D cellular automaton \u2014 default Rule 30 (chaotic organic animation)",
+  "duration": 5.0,
+  "effect": "rule30",
+  "file": "rule30.gif",
+  "format": "gif",
+  "fps": 20,
+  "height": 80,
+  "lerp": "lab",
+  "looping": false,
+  "media_url": "assets/previews/rule30.gif",
+  "params": {
+    "bg": 0,
+    "brightness": 100,
+    "hue": 200.0,
+    "kelvin": 3500,
+    "rule": 30,
+    "seed": 0,
+    "speed": 8.0
+  },
+  "width": 600,
+  "zones": 108,
+  "zpb": 3
+}

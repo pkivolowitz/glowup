@@ -1,0 +1,27 @@
+{
+  "command": "python3 glowup.py play plasma --zones 108 --zpb 3 --brightness 100 --hue 270.0 --hue-spread 40.0 --kelvin 3500 --saturation 80 --speed 2.0 --tendril-rate 8.0",
+  "created": "2026-05-02",
+  "description": "Plasma ball \u2014 electric tendrils crackle from a pulsing core",
+  "duration": 6.0,
+  "effect": "plasma",
+  "file": "plasma.gif",
+  "format": "gif",
+  "fps": 20,
+  "height": 80,
+  "lerp": "lab",
+  "looping": false,
+  "media_url": "assets/previews/plasma.gif",
+  "params": {
+    "brightness": 100,
+    "hue": 270.0,
+    "hue_spread": 40.0,
+    "kelvin": 3500,
+    "saturation": 80,
+    "speed": 2.0,
+    "tendril_rate": 8.0,
+    "zones_per_bulb": 3
+  },
+  "width": 600,
+  "zones": 108,
+  "zpb": 3
+}

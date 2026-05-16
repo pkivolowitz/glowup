@@ -1,0 +1,29 @@
+{
+  "command": "python3 glowup.py play double_slit --zones 108 --zpb 3 --breathe 20.0 --brightness 100 --hue1 200.0 --hue2 330.0 --kelvin 3500 --saturation 100 --separation 0.4 --speed 4.0 --wavelength 0.25",
+  "created": "2026-05-02",
+  "description": "Two-source wave interference with shifting fringe patterns",
+  "duration": 20.0,
+  "effect": "double_slit",
+  "file": "double_slit.gif",
+  "format": "gif",
+  "fps": 20,
+  "height": 80,
+  "lerp": "lab",
+  "looping": false,
+  "media_url": "assets/previews/double_slit.gif",
+  "params": {
+    "breathe": 20.0,
+    "brightness": 100,
+    "hue1": 200.0,
+    "hue2": 330.0,
+    "kelvin": 3500,
+    "saturation": 100,
+    "separation": 0.4,
+    "speed": 4.0,
+    "wavelength": 0.25,
+    "zones_per_bulb": 3
+  },
+  "width": 600,
+  "zones": 108,
+  "zpb": 3
+}

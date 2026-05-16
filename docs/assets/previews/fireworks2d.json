@@ -1,0 +1,28 @@
+{
+  "command": "python3 glowup.py record fireworks2d --grid 8x8 --brightness 100 --burst-duration 1.8 --burst-spread 2.0 --kelvin 3500 --launch-rate 0.4 --max-shells 3",
+  "created": "2026-05-02",
+  "description": "2D fireworks \u2014 bursts bloom from random points across the grid",
+  "duration": 8.0,
+  "effect": "fireworks2d",
+  "file": "fireworks2d.gif",
+  "format": "gif",
+  "fps": 20,
+  "grid": "8x8",
+  "height": 360,
+  "lerp": "lab",
+  "looping": false,
+  "media_url": "assets/previews/fireworks2d.gif",
+  "params": {
+    "brightness": 100,
+    "burst_duration": 1.8,
+    "burst_spread": 2.0,
+    "height": 8,
+    "kelvin": 3500,
+    "launch_rate": 0.4,
+    "max_shells": 3,
+    "width": 8
+  },
+  "width": 360,
+  "zones": 64,
+  "zpb": 1
+}
